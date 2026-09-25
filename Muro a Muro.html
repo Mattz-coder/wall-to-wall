@@ -1,0 +1,554 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Muro a Muro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Lexend:wght@400;600;700&display=swap">
+<style>
+  /* Tema único e claro de propósito: folha de caderno quadriculado */
+  :root {
+    color-scheme: light;
+    --papel: #f7f9fc;
+    --grade: #dbe6f4;
+    --tinta: #1f2d46;
+    --suave: #5d6b84;
+    --azul: #2f6fe0;
+    --azul-claro: #dce7fb;
+    --laranja: #f07a1a;
+    --laranja-claro: #fde6d2;
+    --casa: #eaf0f8;
+    --branco: #ffffff;
+    --erro: #e0443a;
+  }
+  html, body { min-height: 100%; }
+  body {
+    margin: 0;
+    background-color: var(--papel);
+    background-image: linear-gradient(var(--grade) 1px, transparent 1px), linear-gradient(90deg, var(--grade) 1px, transparent 1px);
+    background-size: 22px 22px;
+    color: var(--tinta);
+    font: 400 16px/1.45 "Lexend", system-ui, sans-serif;
+    padding-inline: 16px;
+    display: flex; justify-content: center;
+  }
+  .app { width: 100%; max-width: 560px; padding-block: 16px 28px; display: flex; flex-direction: column; gap: 12px; }
+  button, input { font: inherit; color: inherit; }
+
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  h1 { margin: 0; font: 42px/1 "Gochi Hand", "Comic Sans MS", cursive; }
+  h1 .a { color: var(--azul); } h1 .l { color: var(--laranja); }
+  .modo { display: flex; background: var(--branco); border: 2px solid var(--tinta); border-radius: 999px; padding: 3px; gap: 2px; }
+  .modo button { border: 0; background: none; border-radius: 999px; padding: 4px 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .modo button[aria-pressed="true"] { background: var(--tinta); color: var(--branco); }
+
+  /* ---------- Jogadores ---------- */
+  .jogadores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .jogador {
+    background: var(--branco);
+    border: 2px solid var(--tinta);
+    border-radius: 14px;
+    padding: 8px 10px;
+    display: flex; flex-direction: column; gap: 4px;
+    transition: box-shadow .2s, transform .2s;
+    min-width: 0;
+  }
+  .jogador.vez { transform: translateY(-2px); }
+  .jogador.p0.vez { box-shadow: 0 4px 0 var(--azul), 0 0 0 3px var(--azul-claro); border-color: var(--azul); }
+  .jogador.p1.vez { box-shadow: 0 4px 0 var(--laranja), 0 0 0 3px var(--laranja-claro); border-color: var(--laranja); }
+  .linha-nome { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .bolinha { width: 18px; height: 18px; border-radius: 50%; flex: none; border: 2px solid var(--tinta); }
+  .p0 .bolinha { background: var(--azul); } .p1 .bolinha { background: var(--laranja); }
+  .jogador input {
+    border: 0; border-bottom: 2px dashed transparent; background: none;
+    font: 24px/1.1 "Gochi Hand", "Comic Sans MS", cursive;
+    width: 100%; min-width: 0; padding: 0;
+  }
+  .jogador input:focus { outline: none; border-bottom-color: var(--suave); }
+  .pontos { font: 24px/1 "Gochi Hand", "Comic Sans MS", cursive; color: var(--suave); }
+  .muros-restantes { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; min-height: 12px; }
+  .tijolo { width: 13px; height: 6px; border-radius: 2px; }
+  .p0 .tijolo { background: var(--azul); } .p1 .tijolo { background: var(--laranja); }
+  .tijolo.usado { background: var(--casa) !important; }
+  .muros-restantes small { margin-left: 4px; font-size: 12px; color: var(--suave); }
+
+  /* ---------- Tabuleiro ---------- */
+  .tabuleiro-caixa {
+    background: var(--branco);
+    border: 2px solid var(--tinta);
+    border-radius: 16px;
+    padding: 8px;
+    box-shadow: 4px 4px 0 var(--tinta);
+  }
+  svg#tab { display: block; width: 100%; aspect-ratio: 1; max-width: 100%; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+  .casa { fill: var(--casa); }
+  .casa.meta0 { fill: var(--azul-claro); }
+  .casa.meta1 { fill: var(--laranja-claro); }
+  .alvo-mov { fill: none; stroke-width: 6; stroke-dasharray: 12 9; cursor: pointer; }
+  .alvo-mov.p0 { stroke: var(--azul); } .alvo-mov.p1 { stroke: var(--laranja); }
+  .muro.p0 { fill: var(--azul); } .muro.p1 { fill: var(--laranja); }
+  .muro.novo { animation: aparece .25s ease-out; transform-box: fill-box; transform-origin: center; }
+  @keyframes aparece { from { transform: scale(.4); opacity: 0; } }
+  .fantasma { opacity: .45; }
+  .fantasma.p0 { fill: var(--azul); } .fantasma.p1 { fill: var(--laranja); }
+  .fantasma.invalido { fill: var(--erro); opacity: .35; }
+  .fantasma.confirmar { opacity: .7; animation: pisca 1s ease-in-out infinite; }
+  @keyframes pisca { 50% { opacity: .35; } }
+  .peao { transition: transform .22s ease-out; }
+  .peao.p0 .corpo { fill: var(--azul); } .peao.p1 .corpo { fill: var(--laranja); }
+
+  .status { margin: 0; text-align: center; font-weight: 600; min-height: 1.45em; }
+  .status .n0 { color: var(--azul); } .status .n1 { color: var(--laranja); }
+  .status.erro { color: var(--erro); }
+
+  .acoes { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    flex: 1 1 120px; min-height: 46px;
+    border-radius: 12px;
+    border: 2px solid var(--tinta);
+    background: var(--branco);
+    font-weight: 600; font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 3px 0 var(--tinta);
+  }
+  .btn:active:not(:disabled) { transform: translateY(3px); box-shadow: none; }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn.forte { background: var(--tinta); color: var(--branco); }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--laranja); outline-offset: 3px; }
+
+  .regras { background: var(--branco); border: 2px dashed var(--grade); border-radius: 12px; padding: 10px 14px; color: var(--suave); font-size: 15px; }
+  .regras h2 { margin: 0 0 4px; font: 26px/1.1 "Gochi Hand", "Comic Sans MS", cursive; color: var(--tinta); }
+  .regras ul { margin: 0; padding-left: 20px; display: grid; gap: 3px; }
+  .regras b { color: var(--tinta); }
+
+  .fim { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(31,45,70,.4); padding: 16px; }
+  .cartao {
+    background: var(--branco); border: 3px solid var(--tinta); border-radius: 16px;
+    padding: 18px 20px; text-align: center; max-width: 330px; width: 100%;
+    box-shadow: 5px 5px 0 var(--tinta);
+    animation: surge .35s cubic-bezier(.3,1.6,.5,1);
+  }
+  @keyframes surge { from { transform: scale(.6); opacity: 0; } }
+  .cartao h2 { margin: 0; font: 40px/1.05 "Gochi Hand", "Comic Sans MS", cursive; }
+  .cartao p { margin: 6px 0 14px; color: var(--suave); }
+  .cartao .lista { display: grid; gap: 8px; }
+
+  @media (max-width: 420px) {
+    h1 { font-size: 36px; }
+    .jogador input, .pontos { font-size: 21px; }
+    .tijolo { width: 10px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .peao { transition: none; }
+    .muro.novo, .fantasma.confirmar, .cartao { animation: none; }
+  }
+</style>
+
+<div class="app">
+  <header>
+    <h1><span class="a">Muro</span> a <span class="l">Muro</span></h1>
+    <div class="modo" role="group" aria-label="Modo de jogo">
+      <button id="modo2" aria-pressed="true">2 jogadores</button>
+      <button id="modoCpu" aria-pressed="false">Contra o computador</button>
+    </div>
+  </header>
+
+  <div class="jogadores">
+    <div class="jogador p0" id="card0">
+      <div class="linha-nome"><span class="bolinha"></span><input id="nome0" value="Azul" maxlength="12" aria-label="Nome do jogador azul"><span class="pontos" id="pontos0">0</span></div>
+      <div class="muros-restantes" id="muros0"></div>
+    </div>
+    <div class="jogador p1" id="card1">
+      <div class="linha-nome"><span class="bolinha"></span><input id="nome1" value="Laranja" maxlength="12" aria-label="Nome do jogador laranja"><span class="pontos" id="pontos1">0</span></div>
+      <div class="muros-restantes" id="muros1"></div>
+    </div>
+  </div>
+
+  <div class="tabuleiro-caixa">
+    <svg id="tab" viewBox="-14 -14 1076 1076" aria-label="Tabuleiro 9 por 9">
+      <g id="camadaCasas"></g>
+      <g id="camadaAlvos"></g>
+      <g id="camadaMuros"></g>
+      <g id="camadaFantasma"></g>
+      <g id="camadaPeoes"></g>
+    </svg>
+  </div>
+
+  <p class="status" id="status" aria-live="polite"></p>
+
+  <div class="acoes">
+    <button class="btn" id="btnDesfazer">Desfazer</button>
+    <button class="btn forte" id="btnNovo">Nova partida</button>
+  </div>
+
+  <div class="regras">
+    <h2>Como jogar</h2>
+    <ul>
+      <li><b>Objetivo:</b> levar seu peão até o lado de lá. O azul sobe e o laranja desce.</li>
+      <li><b>Na sua vez, faça uma coisa só:</b> andar uma casa (toque num círculo tracejado) <b>ou</b> colocar um muro.</li>
+      <li><b>Muro:</b> toque no espaço entre as casas. O muro aparece piscando; toque de novo no mesmo lugar para confirmar. No computador, é só clicar.</li>
+      <li>Cada um tem <b>10 muros</b>. Não vale fechar o caminho todo: sempre tem que sobrar uma saída para os dois.</li>
+      <li>Se os peões ficarem cara a cara, dá para <b>pular</b> por cima do outro.</li>
+      <li><b>Desfazer:</b> cada jogador pode desfazer a própria jogada só <b>2 vezes por partida</b>, e nunca duas vezes seguidas.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   MURO A MURO — estratégia para 2 jogadores
+   HTML + CSS + JavaScript puro, desenhado em SVG.
+   ========================================================= */
+
+const N = 9;           // tabuleiro 9×9
+const PASSO = 120;     // distância de uma casa até a próxima (em unidades do SVG)
+const CASA = 88;       // tamanho da casa; o resto (32) é o vão onde entram os muros
+const META = [0, N - 1]; // azul (0) precisa chegar na linha 0; laranja (1) na linha 8
+const NS = "http://www.w3.org/2000/svg";
+const $ = id => document.getElementById(id);
+const k = (r, c) => r * 10 + c;
+const DESFAZER_MAX = 2; // quantas vezes cada jogador pode desfazer por partida
+
+/* ---------- Estado ---------- */
+let jogo, modoCpu = false, placar = [0, 0], quemComeca = 0;
+try { const salvo = JSON.parse(localStorage.getItem("muroAMuro")); if (salvo) { placar = salvo.placar || placar; $("nome0").value = salvo.nomes?.[0] || "Azul"; $("nome1").value = salvo.nomes?.[1] || "Laranja"; } } catch {}
+function salvar() { try { localStorage.setItem("muroAMuro", JSON.stringify({ placar, nomes: [$("nome0").value, $("nome1").value] })); } catch {} }
+
+function novaPartida() {
+  document.querySelector(".fim")?.remove();
+  jogo = {
+    pos: [[N - 1, 4], [0, 4]],
+    muros: [10, 10],
+    H: new Map(), V: new Map(),   // chave -> dono do muro
+    vez: quemComeca,
+    historico: [],
+    desfazeres: [DESFAZER_MAX, DESFAZER_MAX],
+    acabouDeDesfazer: false,
+    previa: null,
+    fim: false,
+    ultimoMuro: null,
+  };
+  desenhar();
+  if (modoCpu && jogo.vez === 1) setTimeout(jogadaCpu, 600);
+}
+
+/* ---------- Regras de movimento ----------
+   Um muro horizontal (H) na posição (r,c) fica entre as linhas r e r+1,
+   cobrindo as colunas c e c+1. Um vertical (V) fica entre as colunas c e c+1,
+   cobrindo as linhas r e r+1. */
+const dentro = (r, c) => r >= 0 && r < N && c >= 0 && c < N;
+function bloqueado(r, c, dr, dc, H, V) {
+  if (dr === 1) return H.has(k(r, c)) || H.has(k(r, c - 1));
+  if (dr === -1) return H.has(k(r - 1, c)) || H.has(k(r - 1, c - 1));
+  if (dc === 1) return V.has(k(r, c)) || V.has(k(r - 1, c));
+  return V.has(k(r, c - 1)) || V.has(k(r - 1, c - 1));
+}
+const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+function movimentos(p, st = jogo) {
+  const [r, c] = st.pos[p], [or, oc] = st.pos[1 - p];
+  const lista = [];
+  for (const [dr, dc] of DIRS) {
+    const nr = r + dr, nc = c + dc;
+    if (!dentro(nr, nc) || bloqueado(r, c, dr, dc, st.H, st.V)) continue;
+    if (nr === or && nc === oc) {
+      // Cara a cara: pula por cima; se atrás tiver muro ou borda, pula na diagonal
+      const jr = nr + dr, jc = nc + dc;
+      if (dentro(jr, jc) && !bloqueado(nr, nc, dr, dc, st.H, st.V)) lista.push([jr, jc]);
+      else for (const [sr, sc] of dr ? [[0, -1], [0, 1]] : [[-1, 0], [1, 0]])
+        if (dentro(nr + sr, nc + sc) && !bloqueado(nr, nc, sr, sc, st.H, st.V)) lista.push([nr + sr, nc + sc]);
+    } else lista.push([nr, nc]);
+  }
+  return lista;
+}
+
+/* ---------- Distância até a chegada ----------
+   Busca em largura saindo da linha de chegada. Serve para:
+   - saber se um muro fecharia o caminho (distância infinita),
+   - e para o computador decidir a jogada. */
+function mapaDistancia(p, H = jogo.H, V = jogo.V) {
+  const dist = new Array(N * N).fill(Infinity);
+  const fila = [];
+  for (let c = 0; c < N; c++) { dist[META[p] * N + c] = 0; fila.push([META[p], c]); }
+  for (let i = 0; i < fila.length; i++) {
+    const [r, c] = fila[i];
+    for (const [dr, dc] of DIRS) {
+      const nr = r + dr, nc = c + dc;
+      if (!dentro(nr, nc) || bloqueado(r, c, dr, dc, H, V) || dist[nr * N + nc] !== Infinity) continue;
+      dist[nr * N + nc] = dist[r * N + c] + 1;
+      fila.push([nr, nc]);
+    }
+  }
+  return dist;
+}
+const distancia = (p, H, V) => { const [r, c] = jogo.pos[p]; return mapaDistancia(p, H, V)[r * N + c]; };
+
+function muroValido(tipo, r, c) {
+  if (r < 0 || r > N - 2 || c < 0 || c > N - 2) return false;
+  const { H, V } = jogo, K = k(r, c);
+  if (tipo === "H" && (H.has(K) || H.has(k(r, c - 1)) || H.has(k(r, c + 1)) || V.has(K))) return false;
+  if (tipo === "V" && (V.has(K) || V.has(k(r - 1, c)) || V.has(k(r + 1, c)) || H.has(K))) return false;
+  const mapa = tipo === "H" ? H : V;
+  mapa.set(K, -1);
+  const ok = distancia(0) < Infinity && distancia(1) < Infinity;
+  mapa.delete(K);
+  return ok;
+}
+
+/* ---------- Jogadas ---------- */
+function guardar() {
+  jogo.acabouDeDesfazer = false;
+  jogo.historico.push({ pos: jogo.pos.map(p => p.slice()), muros: jogo.muros.slice(), H: new Map(jogo.H), V: new Map(jogo.V), vez: jogo.vez });
+}
+
+function andar(r, c) {
+  guardar();
+  jogo.pos[jogo.vez] = [r, c];
+  jogo.previa = null;
+  jogo.ultimoMuro = null;
+  if (r === META[jogo.vez]) return vencer(jogo.vez);
+  passarVez();
+}
+
+function colocarMuro(tipo, r, c) {
+  guardar();
+  (tipo === "H" ? jogo.H : jogo.V).set(k(r, c), jogo.vez);
+  jogo.muros[jogo.vez]--;
+  jogo.previa = null;
+  jogo.ultimoMuro = tipo + k(r, c);
+  passarVez();
+}
+
+function passarVez() {
+  jogo.vez = 1 - jogo.vez;
+  desenhar();
+  if (modoCpu && jogo.vez === 1 && !jogo.fim) setTimeout(jogadaCpu, 550);
+}
+
+/* ---------- Desfazer com limite ----------
+   Cada jogador pode desfazer só a própria jogada, no máximo 2 vezes por partida,
+   e nunca duas vezes seguidas. Assim ninguém fica voltando o jogo para sempre. */
+function quemDesfaz() {
+  if (jogo.fim || jogo.acabouDeDesfazer) return -1;
+  if (modoCpu) return jogo.vez === 0 && jogo.historico.length >= 2 ? 0 : -1; // desfaz a sua jogada e a resposta do computador
+  return jogo.historico.length ? 1 - jogo.vez : -1;                            // quem acabou de jogar
+}
+
+function desfazer() {
+  const autor = quemDesfaz();
+  if (autor < 0 || jogo.desfazeres[autor] <= 0) return;
+  let volta = modoCpu ? 2 : 1;
+  let estado;
+  while (volta-- > 0 && jogo.historico.length) estado = jogo.historico.pop();
+  Object.assign(jogo, estado, { previa: null, ultimoMuro: null });
+  jogo.desfazeres[autor]--;
+  jogo.acabouDeDesfazer = true;
+  desenhar();
+}
+
+/* ---------- Computador ----------
+   Se o adversário está na frente (caminho menor ou igual), tenta o muro
+   que mais atrapalha ele e menos atrapalha o computador.
+   Senão, anda pelo caminho mais curto. */
+function jogadaCpu() {
+  if (jogo.fim || jogo.vez !== 1) return;
+  const eu = 1, ele = 0;
+  const minha = distancia(eu), dele = distancia(ele);
+
+  if (jogo.muros[eu] > 0 && dele <= minha) {
+    let melhor = null;
+    for (const tipo of ["H", "V"]) for (let r = 0; r < N - 1; r++) for (let c = 0; c < N - 1; c++) {
+      if (!muroValido(tipo, r, c)) continue;
+      const mapa = tipo === "H" ? jogo.H : jogo.V;
+      mapa.set(k(r, c), eu);
+      const ganho = (distancia(ele) - dele) * 1.2 - (distancia(eu) - minha) + Math.random() * 0.3;
+      mapa.delete(k(r, c));
+      if (!melhor || ganho > melhor.ganho) melhor = { tipo, r, c, ganho };
+    }
+    if (melhor && melhor.ganho >= 1) return colocarMuro(melhor.tipo, melhor.r, melhor.c);
+  }
+  const mapa = mapaDistancia(eu);
+  const opcoes = movimentos(eu).sort((a, b) => mapa[a[0] * N + a[1]] - mapa[b[0] * N + b[1]] || Math.random() - .5);
+  andar(...opcoes[0]);
+}
+
+/* ---------- Vitória ---------- */
+function vencer(p) {
+  jogo.fim = true;
+  placar[p]++;
+  quemComeca = 1 - quemComeca; // alterna quem começa a próxima partida
+  salvar();
+  desenhar();
+  const nome = $("nome" + p).value || (p ? "Laranja" : "Azul");
+  setTimeout(() => {
+    const el = document.createElement("div");
+    el.className = "fim";
+    el.innerHTML = `<div class="cartao" role="dialog" aria-label="Fim de partida">
+      <h2 style="color:var(--${p ? "laranja" : "azul"})">${nome} venceu!</h2>
+      <p>Placar: ${placar[0]} × ${placar[1]}</p>
+      <div class="lista">
+        <button class="btn forte" id="revanche">Revanche</button>
+        <button class="btn" id="verTab">Ver o tabuleiro</button>
+      </div>
+    </div>`;
+    document.body.appendChild(el);
+    $("revanche").onclick = novaPartida;
+    $("verTab").onclick = () => el.remove();
+    $("revanche").focus();
+  }, 450);
+}
+
+/* ---------- Desenho ---------- */
+const xy = (r, c) => [c * PASSO, r * PASSO];
+let elPeoes = [];
+
+function desenharCasas() {
+  let s = "";
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const [x, y] = xy(r, c);
+    const cls = r === META[0] ? "casa meta0" : r === META[1] ? "casa meta1" : "casa";
+    s += `<rect class="${cls}" x="${x}" y="${y}" width="${CASA}" height="${CASA}" rx="12"/>`;
+  }
+  $("camadaCasas").innerHTML = s;
+  $("camadaPeoes").innerHTML = [0, 1].map(p => `<g class="peao p${p}"><g transform="translate(-3 -2)">
+    <ellipse cx="47" cy="80" rx="30" ry="8" fill="rgba(0,0,0,.15)"/>
+    <circle class="corpo" cx="47" cy="45" r="33" stroke="#1f2d46" stroke-width="5"/>
+    <circle cx="36" cy="40" r="7" fill="#fff"/><circle cx="58" cy="40" r="7" fill="#fff"/>
+    <circle cx="37" cy="42" r="3.5" fill="#1f2d46"/><circle cx="59" cy="42" r="3.5" fill="#1f2d46"/>
+    <path d="M37 56 Q47 64 57 56" fill="none" stroke="#1f2d46" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="30" cy="28" r="6" fill="#fff" opacity=".35"/>
+  </g></g>`).join("");
+  elPeoes = [...$("camadaPeoes").children];
+}
+
+function retanguloMuro(tipo, r, c) {
+  const [x, y] = xy(r, c);
+  return tipo === "H"
+    ? { x: x - 2, y: y + CASA + 5, w: PASSO + CASA + 4, h: PASSO - CASA - 10 }
+    : { x: x + CASA + 5, y: y - 2, w: PASSO - CASA - 10, h: PASSO + CASA + 4 };
+}
+
+function desenhar() {
+  // Peões
+  jogo.pos.forEach(([r, c], p) => { const [x, y] = xy(r, c); elPeoes[p].style.transform = `translate(${x}px, ${y}px)`; });
+
+  // Muros
+  let s = "";
+  for (const [tipo, mapa] of [["H", jogo.H], ["V", jogo.V]]) for (const [K, dono] of mapa) {
+    const { x, y, w, h } = retanguloMuro(tipo, Math.floor(K / 10), K % 10);
+    s += `<rect class="muro p${dono}${jogo.ultimoMuro === tipo + K ? " novo" : ""}" x="${x}" y="${y}" width="${w}" height="${h}" rx="7" stroke="#1f2d46" stroke-width="3"/>`;
+  }
+  $("camadaMuros").innerHTML = s;
+
+  // Casas para onde dá para andar
+  const humano = !jogo.fim && !(modoCpu && jogo.vez === 1);
+  $("camadaAlvos").innerHTML = humano ? movimentos(jogo.vez).map(([r, c]) => {
+    const [x, y] = xy(r, c);
+    return `<circle class="alvo-mov p${jogo.vez}" cx="${x + CASA / 2}" cy="${y + CASA / 2}" r="32"/>`;
+  }).join("") : "";
+
+  // Prévia do muro
+  const pv = jogo.previa;
+  if (pv && humano) {
+    const { x, y, w, h } = retanguloMuro(pv.tipo, pv.r, pv.c);
+    const valido = jogo.muros[jogo.vez] > 0 && muroValido(pv.tipo, pv.r, pv.c);
+    $("camadaFantasma").innerHTML = `<rect class="fantasma p${jogo.vez}${valido ? "" : " invalido"}${pv.confirmar && valido ? " confirmar" : ""}" x="${x}" y="${y}" width="${w}" height="${h}" rx="7"/>`;
+  } else $("camadaFantasma").innerHTML = "";
+
+  // Placar e muros restantes
+  [0, 1].forEach(p => {
+    $("card" + p).classList.toggle("vez", !jogo.fim && jogo.vez === p);
+    $("pontos" + p).textContent = placar[p];
+    $("muros" + p).innerHTML = Array.from({ length: 10 }, (_, i) => `<i class="tijolo${i >= jogo.muros[p] ? " usado" : ""}"></i>`).join("") + `<small>${jogo.muros[p]} ${jogo.muros[p] === 1 ? "muro" : "muros"} · ${jogo.desfazeres[p]} ↶</small>`;
+  });
+
+  const autor = quemDesfaz();
+  const restam = autor >= 0 ? jogo.desfazeres[autor] : 0;
+  $("btnDesfazer").disabled = autor < 0 || restam <= 0;
+  $("btnDesfazer").textContent = autor >= 0 ? `Desfazer (${restam})` : "Desfazer";
+  mostrarStatus();
+}
+
+function mostrarStatus(erro) {
+  const st = $("status");
+  st.className = "status" + (erro ? " erro" : "");
+  if (erro) { st.textContent = erro; return; }
+  const nome = p => `<span class="n${p}">${escapar($("nome" + p).value || (p ? "Laranja" : "Azul"))}</span>`;
+  if (jogo.fim) { st.innerHTML = `${nome(jogo.pos[0][0] === META[0] ? 0 : 1)} chegou do outro lado!`; return; }
+  if (modoCpu && jogo.vez === 1) { st.innerHTML = `${nome(1)} está pensando…`; return; }
+  const faltam = distancia(jogo.vez);
+  st.innerHTML = jogo.previa?.confirmar
+    ? `Toque de novo no muro piscando para confirmar.`
+    : `Vez de ${nome(jogo.vez)} · faltam ${faltam} ${faltam === 1 ? "passo" : "passos"}`;
+}
+const escapar = t => t.replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+
+/* ---------- Toque e mouse ----------
+   Perto do vão entre as casas = muro. No meio da casa = andar. */
+const svg = $("tab");
+function pontoSvg(e) {
+  const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+function interpretar(e) {
+  const { x, y } = pontoSvg(e);
+  const meio = (CASA + PASSO) / 2; // centro do vão: 107
+  const gc = Math.max(0, Math.min(N - 2, Math.round((x - meio) / PASSO)));
+  const gr = Math.max(0, Math.min(N - 2, Math.round((y - meio) / PASSO)));
+  const dx = Math.abs(x - (gc * PASSO + meio)), dy = Math.abs(y - (gr * PASSO + meio));
+  const tolerancia = 24;
+  if (dx < tolerancia || dy < tolerancia) {
+    return dy <= dx ? { tipo: "H", r: gr, c: gc } : { tipo: "V", r: gr, c: gc };
+  }
+  return { casa: [Math.floor(y / PASSO), Math.floor(x / PASSO)] };
+}
+
+svg.addEventListener("pointermove", e => {
+  if (e.pointerType !== "mouse" || jogo.fim || (modoCpu && jogo.vez === 1)) return;
+  const alvo = interpretar(e);
+  const antes = JSON.stringify(jogo.previa);
+  jogo.previa = alvo.tipo ? { tipo: alvo.tipo, r: alvo.r, c: alvo.c } : null;
+  if (JSON.stringify(jogo.previa) !== antes) desenhar();
+});
+svg.addEventListener("pointerleave", () => { if (jogo.previa && !jogo.previa.confirmar) { jogo.previa = null; desenhar(); } });
+
+svg.addEventListener("click", e => {
+  if (jogo.fim || (modoCpu && jogo.vez === 1)) return;
+  const alvo = interpretar(e);
+  if (alvo.casa) {
+    const [r, c] = alvo.casa;
+    if (movimentos(jogo.vez).some(([a, b]) => a === r && b === c)) return andar(r, c);
+    jogo.previa = null; desenhar();
+    return;
+  }
+  const mesmo = jogo.previa && jogo.previa.tipo === alvo.tipo && jogo.previa.r === alvo.r && jogo.previa.c === alvo.c;
+  const mouse = e.pointerType === "mouse";
+  if (mesmo && (jogo.previa.confirmar || mouse)) {
+    if (jogo.muros[jogo.vez] <= 0) return mostrarStatus("Seus muros acabaram. Agora só dá para andar.");
+    if (!muroValido(alvo.tipo, alvo.r, alvo.c)) return mostrarStatus("Esse muro não pode: encosta em outro ou fecha todo o caminho.");
+    return colocarMuro(alvo.tipo, alvo.r, alvo.c);
+  }
+  jogo.previa = { ...alvo, confirmar: true };
+  desenhar();
+});
+
+/* ---------- Botões ---------- */
+$("btnNovo").onclick = novaPartida;
+$("btnDesfazer").onclick = desfazer;
+function definirModo(cpu) {
+  modoCpu = cpu;
+  $("modo2").setAttribute("aria-pressed", !cpu);
+  $("modoCpu").setAttribute("aria-pressed", cpu);
+  $("nome1").value = cpu ? "Computador" : ($("nome1").value === "Computador" ? "Laranja" : $("nome1").value);
+  $("nome1").disabled = cpu;
+  placar = [0, 0]; quemComeca = 0;
+  salvar();
+  novaPartida();
+}
+$("modo2").onclick = () => definirModo(false);
+$("modoCpu").onclick = () => definirModo(true);
+["nome0", "nome1"].forEach(id => $(id).addEventListener("input", () => { salvar(); mostrarStatus(); }));
+
+desenharCasas();
+novaPartida();
+</script>
+
+</body></html>
